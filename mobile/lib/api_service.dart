@@ -11,6 +11,7 @@ class ApiService {
   );
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
   String? _accessToken;
+  bool get isSignedIn => _accessToken != null;
 
   Future<void> restoreSession() async {
     _accessToken = await _storage.read(key: 'access_token');
