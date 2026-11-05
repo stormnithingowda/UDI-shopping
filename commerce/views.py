@@ -159,13 +159,15 @@ class WishlistMoveToCartView(APIView):
         if not quantity.is_finite() or quantity <= 0 or quantity.as_tuple().exponent < -3:
             return Response({"detail": "Quantity must be positive and have at most 3 decimal places."}, status=400)
         cart, _ = Cart.objects.get_or_create(user=request.user)
-        item, created = CartItem.objects.get_or_create(
-            cart=cart, product=product, defaults={"quantity": quantity}
-        )
-        if not created:
-            item.quantity += quantity
-        if item.quantity > product.stock_quantity:
+        item = CartItem.objects.filter(cart=cart, product=product).first()
+        resulting_quantity = quantity + (item.quantity if item else Decimal("0"))
+        if resulting_quantity > product.stock_quantity:
             return Response({"detail": "Requested quantity exceeds available stock."}, status=400)
-        if not created:
+        if item:
+            item.quantity = resulting_quantity
             item.save(update_fields=["quantity"])
+            created = False
+        else:
+            item = CartItem.objects.create(cart=cart, product=product, quantity=quantity)
+            created = True
         return Response(CartItemSerializer(item).data, status=201 if created else 200)
