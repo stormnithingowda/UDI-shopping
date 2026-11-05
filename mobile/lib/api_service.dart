@@ -97,6 +97,40 @@ class ApiService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> wishlist() async {
+    final response = await http.get(Uri.parse('$baseUrl/commerce/wishlist/'), headers: _headers);
+    final data = _decode(response);
+    return List<Map<String, dynamic>>.from(data as List);
+  }
+
+  Future<void> addToWishlist(int productId) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/commerce/wishlist/'),
+      headers: _headers,
+      body: jsonEncode({'product_id': productId}),
+    );
+    _decode(response);
+  }
+
+  Future<void> moveWishlistItemToCart(int itemId, String quantity) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/commerce/wishlist/$itemId/move-to-cart/'),
+      headers: _headers,
+      body: jsonEncode({'quantity': quantity}),
+    );
+    _decode(response);
+  }
+
+  Future<void> removeWishlistItem(int itemId) async {
+    final request = http.Request('DELETE', Uri.parse('$baseUrl/commerce/wishlist/'))
+      ..headers.addAll(_headers)
+      ..body = jsonEncode({'item_id': itemId});
+    final streamed = await request.send();
+    if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
+      throw Exception('Could not remove wishlist item');
+    }
+  }
+
   Map<String, String> get _headers => {
     'Content-Type': 'application/json',
     if (_accessToken != null) 'Authorization': 'Bearer $_accessToken',
