@@ -48,14 +48,16 @@ class ApiService {
     await _saveTokens(data);
   }
 
-  Map<String, dynamic> _decode(http.Response response) {
+  dynamic _decodeAny(http.Response response) {
     final dynamic value = response.body.isEmpty ? <String, dynamic>{} : jsonDecode(response.body);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       final message = value is Map ? (value['detail'] ?? value.values.first) : 'Request failed';
       throw Exception(message.toString());
     }
-    return Map<String, dynamic>.from(value as Map);
+    return value;
   }
+
+  Map<String, dynamic> _decode(http.Response response) => Map<String, dynamic>.from(_decodeAny(response) as Map);
 
   Future<List<Map<String, dynamic>>> products() async {
     final response = await http.get(Uri.parse('$baseUrl/catalog/products/'));
@@ -99,7 +101,7 @@ class ApiService {
 
   Future<List<Map<String, dynamic>>> wishlist() async {
     final response = await http.get(Uri.parse('$baseUrl/commerce/wishlist/'), headers: _headers);
-    final data = _decode(response);
+    final data = _decodeAny(response);
     return List<Map<String, dynamic>>.from(data as List);
   }
 
@@ -129,6 +131,41 @@ class ApiService {
     if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
       throw Exception('Could not remove wishlist item');
     }
+  }
+
+  Future<List<Map<String, dynamic>>> addresses() async {
+    final response = await http.get(Uri.parse('$baseUrl/commerce/addresses/'), headers: _headers);
+    return List<Map<String, dynamic>>.from(_decodeAny(response) as List);
+  }
+
+  Future<Map<String, dynamic>> createAddress(Map<String, dynamic> address) async {
+    final response = await http.post(Uri.parse('$baseUrl/commerce/addresses/'), headers: _headers, body: jsonEncode(address));
+    return _decode(response);
+  }
+
+  Future<Map<String, dynamic>> checkout(int addressId) async {
+    final response = await http.post(Uri.parse('$baseUrl/commerce/checkout/'), headers: _headers, body: jsonEncode({'address_id': addressId}));
+    return _decode(response);
+  }
+
+  Future<List<Map<String, dynamic>>> orders() async {
+    final response = await http.get(Uri.parse('$baseUrl/commerce/orders/'), headers: _headers);
+    return List<Map<String, dynamic>>.from(_decodeAny(response) as List);
+  }
+
+  Future<Map<String, dynamic>> orderDetail(int orderId) async {
+    final response = await http.get(Uri.parse('$baseUrl/commerce/orders/$orderId/'), headers: _headers);
+    return _decode(response);
+  }
+
+  Future<Map<String, dynamic>> createPayment(int orderId) async {
+    final response = await http.post(Uri.parse('$baseUrl/commerce/orders/$orderId/payment/create/'), headers: _headers);
+    return _decode(response);
+  }
+
+  Future<Map<String, dynamic>> verifyPayment(int orderId, Map<String, dynamic> payload) async {
+    final response = await http.post(Uri.parse('$baseUrl/commerce/orders/$orderId/payment/verify/'), headers: _headers, body: jsonEncode(payload));
+    return _decode(response);
   }
 
   Map<String, String> get _headers => {
