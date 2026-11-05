@@ -45,3 +45,43 @@ class RegistrationTests(TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertIn("access", response.data)
         self.assertIn("refresh", response.data)
+
+from unittest.mock import patch
+from .models import RazorpayPayment
+
+class PaymentSecurityTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="payer", password="StrongPass123!")
+        self.client = APIClient()
+        self.client.force_authenticate(self.user)
+        address = Address.objects.create(
+            user=self.user, full_name="Test Payer", phone="9999999997",
+            address_line1="3 Payment Road", city="Bengaluru", state="Karnataka", postal_code="560003",
+        )
+        self.order = Order.objects.create(user=self.user, address=address, total_amount=Decimal("20.00"))
+        self.payment = RazorpayPayment.objects.create(
+            order=self.order, razorpay_order_id="order_test_udi", amount_paise=2000
+        )
+
+    @patch.dict("os.environ", {"RAZORPAY_KEY_SECRET": "test_secret", "RAZORPAY_KEY_ID": "rzp_test_key"})
+    def test_invalid_signature_cannot_confirm_order(self):
+        response = self.client.post(
+            f"/api/v1/commerce/orders/{self.order.id}/payment/verify/",
+            {
+                "razorpay_payment_id": "pay_test_udi",
+                "razorpay_order_id": "order_test_udi",
+                "razorpay_signature": "not-a-valid-signature",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, Order.Status.PENDING_PAYMENT)
+
+    def test_webhook_rejects_missing_signature_headers(self):
+        response = APIClient().post(
+            "/api/v1/commerce/payments/razorpay/webhook/",
+            data="{}",
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
