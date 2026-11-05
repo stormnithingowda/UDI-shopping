@@ -195,6 +195,7 @@ class _StorePageState extends State<StorePage> {
         children: [
           ProductPage(key: ValueKey('products$_refresh'), onCartChanged: _changed),
           CartPage(key: ValueKey('cart$_refresh'), onChanged: _changed),
+          WishlistPage(key: ValueKey('wishlist$_refresh'), onChanged: _changed),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -203,6 +204,7 @@ class _StorePageState extends State<StorePage> {
         destinations: const [
           NavigationDestination(icon: Icon(Icons.storefront_outlined), selectedIcon: Icon(Icons.storefront), label: 'Shop'),
           NavigationDestination(icon: Icon(Icons.shopping_cart_outlined), selectedIcon: Icon(Icons.shopping_cart), label: 'Cart'),
+          NavigationDestination(icon: Icon(Icons.favorite_border), selectedIcon: Icon(Icons.favorite), label: 'Saved'),
         ],
       ),
     );
@@ -218,6 +220,17 @@ class ProductPage extends StatefulWidget {
 
 class _ProductPageState extends State<ProductPage> {
   late Future<List<Map<String, dynamic>>> _products = ApiService.instance.products();
+
+  Future<void> _save(Map<String, dynamic> product) async {
+    try {
+      await ApiService.instance.addToWishlist(product['id'] as int);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved to wishlist')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
 
   Future<void> _add(Map<String, dynamic> product) async {
     try {
@@ -275,10 +288,13 @@ class _ProductPageState extends State<ProductPage> {
                           Text('Available: ${product['stock_quantity']} ${product['unit']}', style: const TextStyle(color: Colors.black54)),
                           const SizedBox(height: 8),
                           Align(alignment: Alignment.centerLeft,
-                            child: FilledButton.tonal(
-                              onPressed: (double.tryParse(product['stock_quantity'].toString()) ?? 0) > 0 ? () => _add(product) : null,
-                              child: const Text('Add to cart'),
-                            ),
+                            child: Row(mainAxisSize: MainAxisSize.min, children: [
+                              FilledButton.tonal(
+                                onPressed: (double.tryParse(product['stock_quantity'].toString()) ?? 0) > 0 ? () => _add(product) : null,
+                                child: const Text('Add to cart'),
+                              ),
+                              IconButton(onPressed: () => _save(product), icon: const Icon(Icons.favorite_border), tooltip: 'Save'),
+                            ]),
                           ),
                         ]),
                       ),
@@ -311,6 +327,17 @@ class _CartPageState extends State<CartPage> {
 
   Future<void> _reload() async => setState(() => _cart = ApiService.instance.cart());
 
+  Future<void> _changeQuantity(int id, double quantity) async {
+    if (quantity <= 0) return;
+    try {
+      await ApiService.instance.updateCartItem(id, quantity.toStringAsFixed(3));
+      await _reload();
+      widget.onChanged();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
   Future<void> _remove(int id) async {
     try {
       await ApiService.instance.removeCartItem(id);
@@ -340,7 +367,12 @@ class _CartPageState extends State<CartPage> {
                 child: ListTile(
                   title: Text(product['name'].toString()),
                   subtitle: Text('₹${product['price']} × ${item['quantity']} ${product['unit']}'),
-                  trailing: IconButton(icon: const Icon(Icons.delete_outline), onPressed: () => _remove(item['id'] as int)),
+                  trailing: Wrap(mainAxisSize: MainAxisSize.min, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                    IconButton(icon: const Icon(Icons.remove_circle_outline), onPressed: () => _changeQuantity(item['id'] as int, (double.tryParse(item['quantity'].toString()) ?? 1) - 1)),
+                    Text(item['quantity'].toString()),
+                    IconButton(icon: const Icon(Icons.add_circle_outline), onPressed: () => _changeQuantity(item['id'] as int, (double.tryParse(item['quantity'].toString()) ?? 0) + 1)),
+                    IconButton(icon: const Icon(Icons.delete_outline), onPressed: () => _remove(item['id'] as int)),
+                  ]),
                 ),
               );
             }),
@@ -349,6 +381,70 @@ class _CartPageState extends State<CartPage> {
             const SizedBox(height: 8),
             const Text('Checkout and payment will be enabled after the full test-mode payment flow is validated.'),
           ],
+        );
+      },
+    );
+  }
+}
+
+
+class WishlistPage extends StatefulWidget {
+  const WishlistPage({super.key, required this.onChanged});
+  final VoidCallback onChanged;
+  @override
+  State<WishlistPage> createState() => _WishlistPageState();
+}
+
+class _WishlistPageState extends State<WishlistPage> {
+  late Future<List<Map<String, dynamic>>> _items = ApiService.instance.wishlist();
+
+  Future<void> _reload() async => setState(() => _items = ApiService.instance.wishlist());
+
+  Future<void> _move(Map<String, dynamic> item) async {
+    try {
+      await ApiService.instance.moveWishlistItemToCart(item['id'] as int, '1');
+      await ApiService.instance.removeWishlistItem(item['id'] as int);
+      await _reload();
+      widget.onChanged();
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Moved to cart')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  Future<void> _remove(int id) async {
+    try {
+      await ApiService.instance.removeWishlistItem(id);
+      await _reload();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _items,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
+        if (snapshot.hasError) return Center(child: Text('Could not load saved products: ${snapshot.error}'));
+        final items = snapshot.data ?? [];
+        if (items.isEmpty) return const Center(child: Text('Your wishlist is empty.'));
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: items.map((item) {
+            final product = Map<String, dynamic>.from(item['product']);
+            return Card(
+              child: ListTile(
+                title: Text(product['name'].toString()),
+                subtitle: Text('₹${product['price']} / ${product['unit']}'),
+                trailing: Wrap(children: [
+                  IconButton(tooltip: 'Move to cart', icon: const Icon(Icons.add_shopping_cart), onPressed: () => _move(item)),
+                  IconButton(tooltip: 'Remove', icon: const Icon(Icons.delete_outline), onPressed: () => _remove(item['id'] as int)),
+                ]),
+              ),
+            );
+          }).toList(),
         );
       },
     );
