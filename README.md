@@ -23,6 +23,9 @@ UDI Shopping is an e-commerce application under development.
 - `GET|POST|DELETE /api/v1/commerce/wishlist/` — current user's wishlist
 - `GET|POST /api/v1/commerce/addresses/` — current user's delivery addresses
 - `POST /api/v1/commerce/checkout/` — create pending-payment order; JSON body: `{"address_id": 1}`
+- `POST /api/v1/commerce/orders/<id>/payment/create/` — create a Razorpay payment order
+- `POST /api/v1/commerce/orders/<id>/payment/verify/` — verify signature and captured payment with Razorpay
+- `POST /api/v1/commerce/payments/razorpay/webhook/` — receive signed and deduplicated Razorpay events
 - `GET /api/v1/commerce/orders/` — current user's orders
 - `GET /api/v1/commerce/orders/<id>/` — current user's order details and status history
 
@@ -37,7 +40,7 @@ Protected routes require `Authorization: Bearer <access_token>`.
 6. Start the API: `python manage.py runserver`.
 
 ## Important payment note
-Checkout currently creates an order with `pending_payment` status and reserves inventory. It does not mark an order paid. Razorpay order creation, server-side signature verification, verified capture checks, webhook idempotency, and stock release on payment failure/cancellation are not implemented yet. Do not use this checkout flow for live sales until those payment safeguards are completed and tested.
+Checkout creates an order with `pending_payment` status and reserves inventory. The Razorpay integration includes server-side order creation, signature verification, a server-side captured-status/amount check, signed webhook validation, event-ID deduplication, and stock release on a verified `payment.failed` webhook. Configure the three Razorpay variables in `.env` with TEST credentials. This is a test-mode foundation, not production approval: live deployment still requires end-to-end gateway testing, cancellation/expiry handling, monitoring, HTTPS, secret management, and a successful CI run.
 
 ## Project status
-Backend foundation and initial commerce endpoints are committed. Automated tests are included but have not yet been executed in a live environment.
+Backend foundation and initial commerce endpoints are committed. Automated tests are included. GitHub Actions runs the Django test suite on pushes and pull requests; passing status must be confirmed in the repository Actions tab.
