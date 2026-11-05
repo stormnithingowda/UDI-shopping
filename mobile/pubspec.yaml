@@ -1,5 +1,5 @@
 name: udi_shopping
- description: UDI Shopping mobile app
+description: UDI Shopping mobile app
 publish_to: 'none'
 version: 1.0.0+1
 environment:
