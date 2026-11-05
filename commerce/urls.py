@@ -1,7 +1,9 @@
 from django.urls import path
+from .auth_views import RegisterView
 from .views import AddressListCreateView, CartView, CheckoutView, OrderDetailView, OrderListView, WishlistView
 
 urlpatterns = [
+    path("register/", RegisterView.as_view(), name="register"),
     path("cart/", CartView.as_view(), name="cart"),
     path("wishlist/", WishlistView.as_view(), name="wishlist"),
     path("addresses/", AddressListCreateView.as_view(), name="addresses"),
