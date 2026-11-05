@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from django.db import transaction
 from django.db.models import F
 from django.shortcuts import get_object_or_404
@@ -15,7 +15,7 @@ class CartView(APIView):
     def get(self, request):
         cart, _ = Cart.objects.get_or_create(user=request.user)
         items = CartItem.objects.filter(cart=cart).select_related("product")
-        total = sum((i.product.price * i.quantity for i in items), Decimal("0.00"))
+        total = sum((i.product.price * i.quantity for i in items), Decimal("0.00")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         return Response({"items": CartItemSerializer(items, many=True).data, "total": total})
 
     def post(self, request):
@@ -86,11 +86,11 @@ class CheckoutView(APIView):
             product = locked_products.get(item.product_id)
             if not product or item.quantity > product.stock_quantity:
                 return Response({"detail": f"Insufficient stock for {item.product.name}."}, status=400)
-            total += product.price * item.quantity
+            total += (product.price * item.quantity).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         order = Order.objects.create(user=request.user, address=address, total_amount=total)
         for item in items:
             product = locked_products[item.product_id]
-            line_total = product.price * item.quantity
+            line_total = (product.price * item.quantity).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             OrderItem.objects.create(
                 order=order, product=product, product_name=product.name, sku=product.sku,
                 unit_price=product.price, quantity=item.quantity, line_total=line_total,
