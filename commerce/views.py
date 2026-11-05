@@ -113,3 +113,59 @@ class OrderDetailView(APIView):
         data = OrderSerializer(order).data
         data["status_history"] = [{"status": h.status, "note": h.note, "created_at": h.created_at} for h in order.status_history.all()]
         return Response(data)
+
+
+class CartItemDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        item = get_object_or_404(
+            CartItem.objects.select_related("product", "cart"),
+            pk=pk, cart__user=request.user
+        )
+        try:
+            quantity = Decimal(str(request.data.get("quantity")))
+        except Exception:
+            return Response({"detail": "Quantity must be a valid decimal."}, status=400)
+        if not quantity.is_finite() or quantity <= 0 or quantity.as_tuple().exponent < -3:
+            return Response({"detail": "Quantity must be positive and have at most 3 decimal places."}, status=400)
+        if quantity > item.product.stock_quantity:
+            return Response({"detail": "Requested quantity is not available."}, status=400)
+        item.quantity = quantity
+        item.save(update_fields=["quantity"])
+        return Response(CartItemSerializer(item).data)
+
+    def delete(self, request, pk):
+        item = get_object_or_404(CartItem, pk=pk, cart__user=request.user)
+        item.delete()
+        return Response(status=204)
+
+
+class WishlistMoveToCartView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @transaction.atomic
+    def post(self, request, pk):
+        saved = get_object_or_404(
+            WishlistItem.objects.select_related("product"), pk=pk, user=request.user
+        )
+        product = saved.product
+        if not product.is_active:
+            return Response({"detail": "This product is no longer available."}, status=400)
+        try:
+            quantity = Decimal(str(request.data.get("quantity", "1")))
+        except Exception:
+            return Response({"detail": "Quantity must be a valid decimal."}, status=400)
+        if not quantity.is_finite() or quantity <= 0 or quantity.as_tuple().exponent < -3:
+            return Response({"detail": "Quantity must be positive and have at most 3 decimal places."}, status=400)
+        cart, _ = Cart.objects.get_or_create(user=request.user)
+        item, created = CartItem.objects.get_or_create(
+            cart=cart, product=product, defaults={"quantity": quantity}
+        )
+        if not created:
+            item.quantity += quantity
+        if item.quantity > product.stock_quantity:
+            return Response({"detail": "Requested quantity exceeds available stock."}, status=400)
+        if not created:
+            item.save(update_fields=["quantity"])
+        return Response(CartItemSerializer(item).data, status=201 if created else 200)
