@@ -85,3 +85,57 @@ class PaymentSecurityTests(TestCase):
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 400)
+
+
+class CartAndWishlistTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="shopper", password="StrongPass123!")
+        self.client = APIClient()
+        self.client.force_authenticate(self.user)
+        self.product = Product.objects.create(
+            name="Organic Apples", slug="organic-apples", sku="UDI-APPLE-001",
+            price="120.00", stock_quantity="5.000", unit="kg",
+        )
+        self.cart, _ = Cart.objects.get_or_create(user=self.user)
+
+    def test_customer_can_update_cart_quantity(self):
+        item = CartItem.objects.create(cart=self.cart, product=self.product, quantity=Decimal("1.000"))
+        response = self.client.patch(
+            f"/api/v1/commerce/cart/items/{item.id}/",
+            {"quantity": "2.250"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        item.refresh_from_db()
+        self.assertEqual(item.quantity, Decimal("2.250"))
+
+    def test_customer_cannot_set_cart_quantity_above_stock(self):
+        item = CartItem.objects.create(cart=self.cart, product=self.product, quantity=Decimal("1.000"))
+        response = self.client.patch(
+            f"/api/v1/commerce/cart/items/{item.id}/",
+            {"quantity": "6.000"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        item.refresh_from_db()
+        self.assertEqual(item.quantity, Decimal("1.000"))
+
+    def test_wishlist_product_can_be_moved_to_cart(self):
+        saved = WishlistItem.objects.create(user=self.user, product=self.product)
+        response = self.client.post(
+            f"/api/v1/commerce/wishlist/{saved.id}/move-to-cart/",
+            {"quantity": "1.500"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(CartItem.objects.filter(cart=self.cart, product=self.product, quantity=Decimal("1.500")).exists())
+
+    def test_wishlist_move_rejects_excess_stock_without_creating_cart_item(self):
+        saved = WishlistItem.objects.create(user=self.user, product=self.product)
+        response = self.client.post(
+            f"/api/v1/commerce/wishlist/{saved.id}/move-to-cart/",
+            {"quantity": "6.000"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(CartItem.objects.filter(cart=self.cart, product=self.product).exists())
