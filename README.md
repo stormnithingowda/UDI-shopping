@@ -20,7 +20,9 @@ UDI Shopping is an e-commerce application under development.
 - `GET /api/v1/catalog/products/` — public product list
 - `GET /api/v1/catalog/products/<slug>/` — public product details
 - `GET|POST|DELETE /api/v1/commerce/cart/` — current user's cart
+- `PATCH|DELETE /api/v1/commerce/cart/items/<id>/` — update or remove a cart item
 - `GET|POST|DELETE /api/v1/commerce/wishlist/` — current user's wishlist
+- `POST /api/v1/commerce/wishlist/<id>/move-to-cart/` — move a saved product into the cart
 - `GET|POST /api/v1/commerce/addresses/` — current user's delivery addresses
 - `POST /api/v1/commerce/checkout/` — create pending-payment order; JSON body: `{"address_id": 1}`
 - `POST /api/v1/commerce/orders/<id>/payment/create/` — create a Razorpay payment order
