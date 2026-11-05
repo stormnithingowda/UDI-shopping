@@ -14,8 +14,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from catalog.models import Product
-from .models import Order, OrderStatusHistory
-from .payment_models import RazorpayPayment, RazorpayWebhookEvent
+from .models import Order, OrderStatusHistory, RazorpayPayment, RazorpayWebhookEvent
 
 
 def _client():
@@ -131,7 +130,7 @@ class RazorpayWebhookView(APIView):
                 event.delete()
                 return Response({'detail': 'Payment order not found.'}, status=404)
             order = Order.objects.select_for_update().get(pk=payment.order_id)
-            if event_type in ('payment.captured', 'order.paid'):
+            if event_type in ('payment.captured',):
                 if entity.get('amount') != payment.amount_paise or entity.get('currency') != 'INR':
                     event.delete()
                     return Response({'detail': 'Webhook amount or currency mismatch.'}, status=400)
