@@ -2,7 +2,7 @@ import hashlib
 import hmac
 import json
 import os
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 import razorpay
 from django.db import transaction
@@ -26,7 +26,7 @@ def _client():
 
 
 def _paise(amount):
-    return int((amount * Decimal('100')).quantize(Decimal('1')))
+    return int((amount * Decimal('100')).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
 
 
 class CreateRazorpayOrderView(APIView):
@@ -130,10 +130,10 @@ class RazorpayWebhookView(APIView):
                 event.delete()
                 return Response({'detail': 'Payment order not found.'}, status=404)
             order = Order.objects.select_for_update().get(pk=payment.order_id)
-            if event_type in ('payment.captured',):
-                if entity.get('amount') != payment.amount_paise or entity.get('currency') != 'INR':
-                    event.delete()
-                    return Response({'detail': 'Webhook amount or currency mismatch.'}, status=400)
+            if event_type in ('payment.captured', 'payment.failed') and (entity.get('amount') != payment.amount_paise or entity.get('currency') != 'INR'):
+                event.delete()
+                return Response({'detail': 'Webhook amount or currency mismatch.'}, status=400)
+            if event_type == 'payment.captured':
                 if order.status == Order.Status.PENDING_PAYMENT:
                     payment.razorpay_payment_id = entity.get('id')
                     payment.status = RazorpayPayment.Status.CAPTURED
