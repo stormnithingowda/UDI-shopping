@@ -14,6 +14,7 @@ UDI Shopping is an e-commerce application under development.
 - Django admin for product and commerce records
 
 ## API routes
+- `POST /api/v1/commerce/register/` — create a customer account and receive JWT tokens
 - `POST /api/v1/auth/token/` — obtain JWT access and refresh tokens (username/password)
 - `POST /api/v1/auth/token/refresh/` — refresh access token
 - `GET /api/v1/catalog/products/` — public product list
