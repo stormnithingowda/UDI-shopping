@@ -36,3 +36,12 @@ class CheckoutTests(TestCase):
         )
         response = self.client.post("/api/v1/commerce/checkout/", {"address_id": foreign_address.id}, format="json")
         self.assertEqual(response.status_code, 404)
+
+class RegistrationTests(TestCase):
+    def test_customer_can_register_and_receive_tokens(self):
+        response = self.client.post("/api/v1/commerce/register/", {
+            "username": "newbuyer", "email": "buyer@example.com", "password": "ValidStrongPass123!"
+        }, format="json")
+        self.assertEqual(response.status_code, 201)
+        self.assertIn("access", response.data)
+        self.assertIn("refresh", response.data)
