@@ -152,6 +152,26 @@ class AddressManagementTests(TestCase):
         self.assertEqual(response.status_code, 204)
         self.assertFalse(Address.objects.filter(pk=address.id).exists())
 
+    def test_address_linked_to_order_cannot_be_edited(self):
+        address = Address.objects.create(
+            user=self.user,
+            full_name="Historical Address",
+            phone="9999999999",
+            address_line1="13 History Road",
+            city="Bengaluru",
+            state="Karnataka",
+            postal_code="560001",
+        )
+        Order.objects.create(user=self.user, address=address, total_amount=Decimal("10.00"))
+        response = self.client.patch(
+            f"/api/v1/commerce/addresses/{address.id}/",
+            {"address_line1": "Changed Road"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        address.refresh_from_db()
+        self.assertEqual(address.address_line1, "13 History Road")
+
 
 class PaymentSecurityTests(TestCase):
     def setUp(self):
@@ -265,6 +285,38 @@ class PaymentSecurityTests(TestCase):
         self.order.refresh_from_db()
         self.assertEqual(self.order.status, Order.Status.CONFIRMED)
         self.assertEqual(RazorpayWebhookEvent.objects.filter(event_id="evt_udi_captured_001").count(), 1)
+        self.assertEqual(OrderStatusHistory.objects.filter(order=self.order).count(), 1)
+
+    @patch.dict("os.environ", {"RAZORPAY_WEBHOOK_SECRET": "webhook_secret"})
+    def test_signed_payment_failed_webhook_keeps_order_pending_for_retry(self):
+        payload = {
+            "event": "payment.failed",
+            "payload": {
+                "payment": {
+                    "entity": {
+                        "id": "pay_failed_udi",
+                        "order_id": "order_test_udi",
+                        "amount": 2000,
+                        "currency": "INR",
+                    }
+                }
+            },
+        }
+        body = json.dumps(payload).encode("utf-8")
+        signature = hmac.new(b"webhook_secret", body, hashlib.sha256).hexdigest()
+        response = APIClient().generic(
+            "POST",
+            "/api/v1/commerce/payments/razorpay/webhook/",
+            body,
+            content_type="application/json",
+            HTTP_X_RAZORPAY_SIGNATURE=signature,
+            HTTP_X_RAZORPAY_EVENT_ID="evt_udi_failed_001",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.order.refresh_from_db()
+        self.payment.refresh_from_db()
+        self.assertEqual(self.order.status, Order.Status.PENDING_PAYMENT)
+        self.assertEqual(self.payment.status, RazorpayPayment.Status.FAILED)
         self.assertEqual(OrderStatusHistory.objects.filter(order=self.order).count(), 1)
 
 
