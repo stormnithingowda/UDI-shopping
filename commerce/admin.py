@@ -108,6 +108,12 @@ class ReadOnlyAuditAdmin(admin.ModelAdmin):
     def has_change_permission(self, request, obj=None):
         return False
 
+    def has_view_permission(self, request, obj=None):
+        opts = self.opts
+        return request.user.has_perm(f"{opts.app_label}.view_{opts.model_name}") or request.user.has_perm(
+            f"{opts.app_label}.change_{opts.model_name}"
+        )
+
     def has_delete_permission(self, request, obj=None):
         return False
 
@@ -137,4 +143,19 @@ class RazorpayWebhookEventAdmin(ReadOnlyAuditAdmin):
     readonly_fields = ("event_id", "event_type", "processed_at")
 
 
-admin.site.register([Cart, CartItem, WishlistItem, Address, OrderItem, OrderStatusHistory])
+@admin.register(OrderItem)
+class OrderItemAdmin(ReadOnlyAuditAdmin):
+    list_display = ("order", "product_name", "sku", "quantity", "unit_price", "line_total")
+    search_fields = ("order__id", "product_name", "sku")
+    readonly_fields = ("order", "product", "product_name", "sku", "unit_price", "quantity", "line_total")
+
+
+@admin.register(OrderStatusHistory)
+class OrderStatusHistoryAdmin(ReadOnlyAuditAdmin):
+    list_display = ("order", "status", "note", "created_at")
+    list_filter = ("status", "created_at")
+    search_fields = ("order__id", "note")
+    readonly_fields = ("order", "status", "note", "created_at")
+
+
+admin.site.register([Cart, CartItem, WishlistItem, Address])
