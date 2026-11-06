@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'api_service.dart';
+import 'checkout_page.dart';
+import 'orders_page.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -196,6 +198,7 @@ class _StorePageState extends State<StorePage> {
           ProductPage(key: ValueKey('products$_refresh'), onCartChanged: _changed),
           CartPage(key: ValueKey('cart$_refresh'), onChanged: _changed),
           WishlistPage(key: ValueKey('wishlist$_refresh'), onChanged: _changed),
+          OrdersPage(key: ValueKey('orders$_refresh')),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -205,6 +208,7 @@ class _StorePageState extends State<StorePage> {
           NavigationDestination(icon: Icon(Icons.storefront_outlined), selectedIcon: Icon(Icons.storefront), label: 'Shop'),
           NavigationDestination(icon: Icon(Icons.shopping_cart_outlined), selectedIcon: Icon(Icons.shopping_cart), label: 'Cart'),
           NavigationDestination(icon: Icon(Icons.favorite_border), selectedIcon: Icon(Icons.favorite), label: 'Saved'),
+          NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Orders'),
         ],
       ),
     );
@@ -378,8 +382,16 @@ class _CartPageState extends State<CartPage> {
             }),
             const SizedBox(height: 12),
             Text('Cart total: ₹${data['total']}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            const Text('Checkout and payment will be enabled after the full test-mode payment flow is validated.'),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => CheckoutPage(onOrderCreated: widget.onChanged),
+                ),
+              ),
+              icon: const Icon(Icons.lock_outline),
+              label: const Text('Continue to checkout'),
+            ),
           ],
         );
       },
