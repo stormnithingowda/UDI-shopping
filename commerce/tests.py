@@ -192,6 +192,22 @@ class PaymentSecurityTests(TestCase):
             amount_paise=2000,
         )
 
+    @patch.dict("os.environ", {"RAZORPAY_KEY_SECRET": "test_secret", "RAZORPAY_KEY_ID": "rzp_test_key"})
+    def test_payment_create_returns_flutter_checkout_contract(self):
+        response = self.client.post(
+            f"/api/v1/commerce/orders/{self.order.id}/payment/create/",
+            {},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            set(response.data),
+            {"key_id", "razorpay_order_id", "amount", "currency"},
+        )
+        self.assertEqual(response.data["key_id"], "rzp_test_key")
+        self.assertEqual(response.data["amount"], 2000)
+        self.assertEqual(response.data["currency"], "INR")
+
     @patch.dict("os.environ", {"RAZORPAY_KEY_SECRET": "live_secret", "RAZORPAY_KEY_ID": "rzp_live_not_allowed"})
     def test_live_razorpay_key_is_rejected_by_test_mode_backend(self):
         response = self.client.post(
@@ -256,6 +272,21 @@ class PaymentSecurityTests(TestCase):
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 400)
+
+    @patch.dict("os.environ", {"RAZORPAY_WEBHOOK_SECRET": "webhook_secret"})
+    def test_webhook_rejects_invalid_signature_without_recording_event(self):
+        response = APIClient().generic(
+            "POST",
+            "/api/v1/commerce/payments/razorpay/webhook/",
+            b"{}",
+            content_type="application/json",
+            HTTP_X_RAZORPAY_SIGNATURE="invalid",
+            HTTP_X_RAZORPAY_EVENT_ID="evt_udi_invalid_001",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(
+            RazorpayWebhookEvent.objects.filter(event_id="evt_udi_invalid_001").exists()
+        )
 
     @patch.dict("os.environ", {"RAZORPAY_WEBHOOK_SECRET": "webhook_secret"})
     def test_signed_captured_webhook_confirms_order_and_deduplicates_event(self):
