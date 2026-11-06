@@ -7,7 +7,6 @@ from decimal import Decimal, ROUND_HALF_UP
 import razorpay
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -116,7 +115,7 @@ class RazorpayWebhookView(APIView):
         try:
             payload = json.loads(request.body.decode('utf-8'))
             event_type = payload['event']
-        except (ValueError, KeyError, TypeError):
+        except (UnicodeDecodeError, ValueError, KeyError, TypeError):
             return Response({'detail': 'Invalid webhook payload.'}, status=400)
         with transaction.atomic():
             event, created = RazorpayWebhookEvent.objects.get_or_create(event_id=event_id, defaults={'event_type': event_type})
