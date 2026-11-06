@@ -82,6 +82,7 @@ The local emulator URL uses HTTP. If Android blocks cleartext traffic, enable it
 4. Subscribe to `payment.captured` and `payment.failed` events and use the same webhook secret configured on the server.
 5. The app opens Razorpay Standard Checkout with the server-created gateway order. The server verifies the checkout signature and fetches the payment from Razorpay to confirm captured status, order ID, amount, and INR currency before confirming an order.
 6. A client callback alone never confirms an order. The signed webhook is independently validated and duplicate event IDs are ignored.
+7. A verified `payment.failed` event marks that payment attempt failed but keeps the order pending so the customer can retry. The reserved stock is not released by a single failed attempt; production deployments must add a tested expiry/cancellation policy to release abandoned reservations safely.
 
 Use only Razorpay test credentials while validating. Do not put the Key Secret or webhook secret in Flutter, source control, or client-side build arguments.
 
