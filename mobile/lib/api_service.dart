@@ -51,7 +51,9 @@ class ApiService {
   dynamic _decodeAny(http.Response response) {
     final dynamic value = response.body.isEmpty ? <String, dynamic>{} : jsonDecode(response.body);
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      final message = value is Map ? (value['detail'] ?? value.values.first) : 'Request failed';
+      final message = value is Map && value.isNotEmpty
+          ? (value['detail'] ?? value.values.first)
+          : 'Request failed (${response.statusCode})';
       throw Exception(message.toString());
     }
     return value;
