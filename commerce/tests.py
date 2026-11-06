@@ -192,6 +192,15 @@ class PaymentSecurityTests(TestCase):
             amount_paise=2000,
         )
 
+    @patch.dict("os.environ", {"RAZORPAY_KEY_SECRET": "live_secret", "RAZORPAY_KEY_ID": "rzp_live_not_allowed"})
+    def test_live_razorpay_key_is_rejected_by_test_mode_backend(self):
+        response = self.client.post(
+            f"/api/v1/commerce/orders/{self.order.id}/payment/create/",
+            {},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 503)
+
     @patch.dict("os.environ", {"RAZORPAY_KEY_SECRET": "test_secret", "RAZORPAY_KEY_ID": "rzp_test_key"})
     def test_invalid_signature_cannot_confirm_order(self):
         response = self.client.post(
