@@ -66,6 +66,11 @@ class ApiService {
     return List<Map<String, dynamic>>.from(rows as List);
   }
 
+  Future<Map<String, dynamic>> productDetail(String slug) async {
+    final response = await http.get(Uri.parse('$baseUrl/catalog/products/$slug/'));
+    return _decode(response);
+  }
+
   Future<Map<String, dynamic>> cart() async {
     final response = await _authorized((headers) => http.get(Uri.parse('$baseUrl/commerce/cart/'), headers: headers));
     return _decode(response);
