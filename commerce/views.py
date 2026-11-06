@@ -207,4 +207,5 @@ class WishlistMoveToCartView(APIView):
         else:
             item = CartItem.objects.create(cart=cart, product=product, quantity=quantity)
             created = True
+        saved.delete()
         return Response(CartItemSerializer(item).data, status=201 if created else 200)
