@@ -428,7 +428,6 @@ class _WishlistPageState extends State<WishlistPage> {
   Future<void> _move(Map<String, dynamic> item) async {
     try {
       await ApiService.instance.moveWishlistItemToCart(item['id'] as int, '1');
-      await ApiService.instance.removeWishlistItem(item['id'] as int);
       await _reload();
       widget.onChanged();
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Moved to cart')));
