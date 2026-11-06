@@ -82,6 +82,11 @@ class AddressDetailView(APIView):
 
     def patch(self, request, pk):
         address = get_object_or_404(Address, pk=pk, user=request.user)
+        if address.orders.exists():
+            return Response(
+                {"detail": "This address is linked to an order. Create a new address to preserve the order's delivery record."},
+                status=400,
+            )
         serializer = AddressSerializer(address, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         with transaction.atomic():
