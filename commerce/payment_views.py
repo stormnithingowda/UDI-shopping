@@ -18,7 +18,8 @@ from .models import Order, OrderStatusHistory, RazorpayPayment, RazorpayWebhookE
 def _client():
     key_id = os.getenv('RAZORPAY_KEY_ID', '')
     key_secret = os.getenv('RAZORPAY_KEY_SECRET', '')
-    if not key_id or not key_secret:
+    # This repository is intentionally locked to Razorpay Test Mode.
+    if not key_id.startswith('rzp_test_') or not key_secret:
         return None
     return razorpay.Client(auth=(key_id, key_secret))
 
