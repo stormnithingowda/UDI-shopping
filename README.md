@@ -6,7 +6,7 @@ UDI Shopping is a Flutter Android shopping client backed by a Django REST API an
 
 ### Customer app
 - Customer registration, login, and secure local token storage
-- Product catalogue and product details
+- Product catalogue, product detail pages, and stock availability
 - Customer-owned cart and wishlist
 - Delivery address list, create, edit, delete, and default-address selection
 - Checkout with server-side stock validation and pending-payment order creation
@@ -84,7 +84,7 @@ The local emulator URL uses HTTP. If Android blocks cleartext traffic, enable it
 6. A client callback alone never confirms an order. The signed webhook is independently validated and duplicate event IDs are ignored.
 7. A verified `payment.failed` event marks that payment attempt failed but keeps the order pending so the customer can retry. The reserved stock is not released by a single failed attempt; production deployments must add a tested expiry/cancellation policy to release abandoned reservations safely.
 
-Use only Razorpay test credentials while validating. Do not put the Key Secret or webhook secret in Flutter, source control, or client-side build arguments.
+The backend deliberately rejects non-test Razorpay Key IDs (`rzp_live_...`) in this project build. Use only Razorpay test credentials while validating. Do not put the Key Secret or webhook secret in Flutter, source control, or client-side build arguments.
 
 ## Automated checks
 
@@ -109,10 +109,10 @@ GitHub Actions runs the Django checks/tests and Flutter analysis/test/debug-APK 
 
 ## Deployment outline
 
-- Deploy Django behind an HTTPS reverse proxy with PostgreSQL and a production WSGI server such as Gunicorn.
+- Deploy Django behind an HTTPS reverse proxy with PostgreSQL and a production WSGI server such as Gunicorn (for example, `gunicorn config.wsgi:application --bind 0.0.0.0:8000`).
 - Set a strong secret key, `DJANGO_DEBUG=False`, exact `DJANGO_ALLOWED_HOSTS`, database credentials, Razorpay **live** credentials only after separate approval, and the webhook secret through the host's secret manager.
 - Run migrations during release and collect Django admin static files with `python manage.py collectstatic --noinput`; serve the generated static directory through the web server.
-- Enable HTTPS redirects, secure cookies, and HSTS only after TLS and proxy headers are correctly configured.
+- Set `DJANGO_SECURE_SSL_REDIRECT=True`, `DJANGO_USE_X_FORWARDED_PROTO=True` when TLS terminates at the reverse proxy, and a suitable `DJANGO_SECURE_HSTS_SECONDS` only after TLS and proxy headers are correctly configured. Keep the HSTS value at `0` until the HTTPS deployment has been tested.
 - Set the Flutter release API URL to the HTTPS API host and build/sign the Android release artifact.
 - Configure monitoring, backups, payment reconciliation, cancellation/expiry/refund handling, incident response, and end-to-end payment tests before any production launch.
 
