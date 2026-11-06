@@ -19,6 +19,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
   int? _selectedAddressId;
   int? _activeOrderId;
   bool _busy = false;
+  bool _canRetryPayment = false;
   String? _paymentMessage;
 
   @override
@@ -111,6 +112,28 @@ class _CheckoutPageState extends State<CheckoutPage> {
     }
   }
 
+  Future<void> _openPaymentForOrder(int orderId) async {
+    final payment = await ApiService.instance.createPayment(orderId);
+    if (!mounted) return;
+    final keyId = payment['key_id']?.toString() ?? '';
+    final gatewayOrderId = payment['razorpay_order_id']?.toString() ?? '';
+    final amount = payment['amount'];
+    if (keyId.isEmpty || gatewayOrderId.isEmpty || amount == null) {
+      throw Exception('The payment service returned incomplete checkout details.');
+    }
+    _razorpay.open({
+      'key': keyId,
+      'amount': amount,
+      'currency': payment['currency'] ?? 'INR',
+      'order_id': gatewayOrderId,
+      'name': 'UDI Shopping',
+      'description': 'Order #$orderId',
+      'theme': {'color': '#26734D'},
+    });
+    setState(() => _paymentMessage =
+        'Order #$orderId is created. Complete payment in the secure Razorpay checkout.');
+  }
+
   Future<void> _placeOrder() async {
     final addressId = _selectedAddressId;
     if (addressId == null) {
@@ -120,40 +143,45 @@ class _CheckoutPageState extends State<CheckoutPage> {
     setState(() {
       _busy = true;
       _paymentMessage = null;
+      _canRetryPayment = false;
     });
     try {
       final order = await ApiService.instance.checkout(addressId);
       final orderId = order['id'] as int;
-      _activeOrderId = orderId;
-      widget.onOrderCreated();
-
-      final payment = await ApiService.instance.createPayment(orderId);
       if (!mounted) return;
-      final keyId = payment['key_id']?.toString() ?? '';
-      final gatewayOrderId = payment['razorpay_order_id']?.toString() ?? '';
-      final amount = payment['amount'];
-      if (keyId.isEmpty || gatewayOrderId.isEmpty || amount == null) {
-        throw Exception('The payment service returned incomplete checkout details.');
-      }
-
-      _razorpay.open({
-        'key': keyId,
-        'amount': amount,
-        'currency': payment['currency'] ?? 'INR',
-        'order_id': gatewayOrderId,
-        'name': 'UDI Shopping',
-        'description': 'Order #$orderId',
-        'theme': {'color': '#26734D'},
-      });
-      setState(() => _paymentMessage =
-          'Order #$orderId is created. Complete payment in the secure Razorpay checkout.');
+      setState(() => _activeOrderId = orderId);
+      widget.onOrderCreated();
+      await _openPaymentForOrder(orderId);
     } catch (e) {
       if (mounted) {
         _showMessage('Checkout could not continue: $e');
-        setState(() => _paymentMessage =
-            _activeOrderId == null
-                ? null
-                : 'Order #$_activeOrderId is awaiting payment. You can review its status in Orders.');
+        setState(() {
+          _canRetryPayment = _activeOrderId != null;
+          _paymentMessage = _activeOrderId == null
+              ? null
+              : 'Order #$_activeOrderId is awaiting payment. You can retry payment or review its status in Orders.';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _retryPayment() async {
+    final orderId = _activeOrderId;
+    if (orderId == null) return;
+    setState(() {
+      _busy = true;
+      _canRetryPayment = false;
+    });
+    try {
+      await _openPaymentForOrder(orderId);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _canRetryPayment = true;
+          _paymentMessage = 'Could not reopen payment for order #$orderId: $e';
+        });
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -169,7 +197,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
       _showMessage('Payment response is incomplete. Check the order status before trying again.');
       return;
     }
-    setState(() => _busy = true);
+    if (!mounted) return;
+    setState(() {
+      _busy = true;
+      _canRetryPayment = false;
+    });
     try {
       final result = await ApiService.instance.verifyPayment(orderId, {
         'razorpay_payment_id': paymentId,
@@ -200,6 +232,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     if (!mounted) return;
     setState(() {
       _busy = false;
+      _canRetryPayment = true;
       _paymentMessage =
           'Razorpay did not complete the payment (${response.code}): ${response.message ?? 'Please try again'}. The order remains pending until the server receives a verified payment event.';
     });
@@ -329,7 +362,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
               ],
               const SizedBox(height: 20),
               FilledButton.icon(
-                onPressed: _busy || _selectedAddressId == null ? null : _placeOrder,
+                onPressed: _busy ||
+                        _selectedAddressId == null ||
+                        (_activeOrderId != null && !_canRetryPayment)
+                    ? null
+                    : (_activeOrderId == null ? _placeOrder : _retryPayment),
                 icon: _busy
                     ? const SizedBox(
                         width: 18,
@@ -337,7 +374,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.lock_outline),
-                label: Text(_busy ? 'Please wait...' : 'Place order and pay securely'),
+                label: Text(
+                  _busy
+                      ? 'Please wait...'
+                      : _activeOrderId == null
+                          ? 'Place order and pay securely'
+                          : 'Retry payment for order #$_activeOrderId',
+                ),
               ),
               const SizedBox(height: 8),
               const Text(
