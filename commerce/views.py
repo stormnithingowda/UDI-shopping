@@ -60,13 +60,45 @@ class WishlistView(APIView):
 
 class AddressListCreateView(APIView):
     permission_classes = [IsAuthenticated]
+
     def get(self, request):
-        return Response(AddressSerializer(Address.objects.filter(user=request.user), many=True).data)
+        addresses = Address.objects.filter(user=request.user).order_by("-is_default", "-created_at")
+        return Response(AddressSerializer(addresses, many=True).data)
+
+    @transaction.atomic
     def post(self, request):
         serializer = AddressSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        make_default = serializer.validated_data.get("is_default", False)
+        if make_default or not Address.objects.filter(user=request.user).exists():
+            Address.objects.filter(user=request.user).update(is_default=False)
+            serializer.validated_data["is_default"] = True
         address = serializer.save(user=request.user)
         return Response(AddressSerializer(address).data, status=201)
+
+
+class AddressDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        address = get_object_or_404(Address, pk=pk, user=request.user)
+        serializer = AddressSerializer(address, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            if serializer.validated_data.get("is_default") is True:
+                Address.objects.filter(user=request.user).exclude(pk=address.pk).update(is_default=False)
+            address = serializer.save()
+        return Response(AddressSerializer(address).data)
+
+    def delete(self, request, pk):
+        address = get_object_or_404(Address, pk=pk, user=request.user)
+        if address.orders.exists():
+            return Response(
+                {"detail": "This address is linked to an order and cannot be deleted."},
+                status=400,
+            )
+        address.delete()
+        return Response(status=204)
 
 class CheckoutView(APIView):
     permission_classes = [IsAuthenticated]
