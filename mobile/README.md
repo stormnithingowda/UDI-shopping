@@ -5,7 +5,7 @@ This directory contains the Flutter Android customer app.
 ## Included customer flows
 
 - Register and sign in with JWT authentication; access tokens are stored with platform secure storage and refreshed after an API 401 response.
-- Browse the public product catalogue.
+- Browse the public product catalogue and open individual product details.
 - Add products to the cart and update or remove cart items.
 - Save products to a wishlist and move them to the cart.
 - Manage delivery addresses (add, edit, delete unused addresses, and choose a default).
