@@ -64,6 +64,9 @@ class CheckoutTests(TestCase):
 
 
 class RegistrationTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
     def test_customer_can_register_and_receive_tokens(self):
         response = self.client.post("/api/v1/commerce/register/", {
             "username": "newbuyer",
