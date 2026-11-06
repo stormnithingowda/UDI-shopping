@@ -411,6 +411,7 @@ class CartAndWishlistTests(TestCase):
                 quantity=Decimal("1.500"),
             ).exists()
         )
+        self.assertFalse(WishlistItem.objects.filter(pk=saved.pk).exists())
 
     def test_wishlist_move_rejects_excess_stock_without_creating_cart_item(self):
         saved = WishlistItem.objects.create(user=self.user, product=self.product)
@@ -421,3 +422,4 @@ class CartAndWishlistTests(TestCase):
         )
         self.assertEqual(response.status_code, 400)
         self.assertFalse(CartItem.objects.filter(cart=self.cart, product=self.product).exists())
+        self.assertTrue(WishlistItem.objects.filter(pk=saved.pk).exists())
