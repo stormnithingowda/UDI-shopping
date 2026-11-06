@@ -143,6 +143,26 @@ class ApiService {
     return _decode(response);
   }
 
+  Future<Map<String, dynamic>> updateAddress(int addressId, Map<String, dynamic> address) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/commerce/addresses/$addressId/'),
+      headers: _headers,
+      body: jsonEncode(address),
+    );
+    return _decode(response);
+  }
+
+  Future<void> deleteAddress(int addressId) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/commerce/addresses/$addressId/'),
+      headers: _headers,
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final message = response.body.isEmpty ? 'Could not delete address' : response.body;
+      throw Exception(message);
+    }
+  }
+
   Future<Map<String, dynamic>> checkout(int addressId) async {
     final response = await http.post(Uri.parse('$baseUrl/commerce/checkout/'), headers: _headers, body: jsonEncode({'address_id': addressId}));
     return _decode(response);
