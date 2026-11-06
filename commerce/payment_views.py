@@ -6,14 +6,12 @@ from decimal import Decimal, ROUND_HALF_UP
 
 import razorpay
 from django.db import transaction
-from django.db.models import F
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from catalog.models import Product
 from .models import Order, OrderStatusHistory, RazorpayPayment, RazorpayWebhookEvent
 
 
@@ -145,9 +143,9 @@ class RazorpayWebhookView(APIView):
                 payment.razorpay_payment_id = entity.get('id')
                 payment.status = RazorpayPayment.Status.FAILED
                 payment.save(update_fields=['razorpay_payment_id', 'status', 'updated_at'])
-                for item in order.items.all():
-                    Product.objects.filter(pk=item.product_id).update(stock_quantity=F('stock_quantity') + item.quantity)
-                order.status = Order.Status.PAYMENT_FAILED
-                order.save(update_fields=['status', 'updated_at'])
-                OrderStatusHistory.objects.create(order=order, status=order.status, note='Payment failed; reserved inventory released.')
+                OrderStatusHistory.objects.create(
+                    order=order,
+                    status=Order.Status.PENDING_PAYMENT,
+                    note='A payment attempt failed. The order remains pending so the customer can retry.',
+                )
         return Response({'detail': 'Webhook processed.'}, status=200)
