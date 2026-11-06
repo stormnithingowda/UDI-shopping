@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'api_service.dart';
 import 'checkout_page.dart';
 import 'orders_page.dart';
+import 'product_detail_page.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -273,8 +274,17 @@ class _ProductPageState extends State<ProductPage> {
               ...products.map((product) => Card(
                 margin: const EdgeInsets.only(bottom: 12),
                 clipBehavior: Clip.antiAlias,
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
+                child: InkWell(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ProductDetailPage(
+                        slug: product['slug'].toString(),
+                        onCartChanged: widget.onCartChanged,
+                      ),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
                   child: Row(
                     children: [
                       if ((product['image_url'] ?? '').toString().isNotEmpty)
@@ -305,6 +315,7 @@ class _ProductPageState extends State<ProductPage> {
                         ]),
                       ),
                     ],
+                  ),
                   ),
                 ),
               )),
