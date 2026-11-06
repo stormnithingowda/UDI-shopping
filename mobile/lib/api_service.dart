@@ -67,125 +67,145 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> cart() async {
-    final response = await http.get(Uri.parse('$baseUrl/commerce/cart/'), headers: _headers);
+    final response = await _authorized((headers) => http.get(Uri.parse('$baseUrl/commerce/cart/'), headers: headers));
     return _decode(response);
   }
 
   Future<void> addToCart(int productId, String quantity) async {
-    final response = await http.post(
+    final response = await _authorized((headers) => http.post(
       Uri.parse('$baseUrl/commerce/cart/'),
-      headers: _headers,
+      headers: headers,
       body: jsonEncode({'product_id': productId, 'quantity': quantity}),
-    );
+    ));
     _decode(response);
   }
 
   Future<void> updateCartItem(int itemId, String quantity) async {
-    final response = await http.patch(
+    final response = await _authorized((headers) => http.patch(
       Uri.parse('$baseUrl/commerce/cart/items/$itemId/'),
-      headers: _headers,
+      headers: headers,
       body: jsonEncode({'quantity': quantity}),
-    );
+    ));
     _decode(response);
   }
 
   Future<void> removeCartItem(int itemId) async {
-    final request = http.Request('DELETE', Uri.parse('$baseUrl/commerce/cart/'))
-      ..headers.addAll(_headers)
-      ..body = jsonEncode({'item_id': itemId});
-    final streamed = await request.send();
-    if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
-      throw Exception('Could not remove cart item');
-    }
+    final response = await _authorized((headers) => http.delete(
+      Uri.parse('$baseUrl/commerce/cart/'),
+      headers: headers,
+      body: jsonEncode({'item_id': itemId}),
+    ));
+    _decodeAny(response);
   }
 
   Future<List<Map<String, dynamic>>> wishlist() async {
-    final response = await http.get(Uri.parse('$baseUrl/commerce/wishlist/'), headers: _headers);
+    final response = await _authorized((headers) => http.get(Uri.parse('$baseUrl/commerce/wishlist/'), headers: headers));
     final data = _decodeAny(response);
     return List<Map<String, dynamic>>.from(data as List);
   }
 
   Future<void> addToWishlist(int productId) async {
-    final response = await http.post(
+    final response = await _authorized((headers) => http.post(
       Uri.parse('$baseUrl/commerce/wishlist/'),
-      headers: _headers,
+      headers: headers,
       body: jsonEncode({'product_id': productId}),
-    );
+    ));
     _decode(response);
   }
 
   Future<void> moveWishlistItemToCart(int itemId, String quantity) async {
-    final response = await http.post(
+    final response = await _authorized((headers) => http.post(
       Uri.parse('$baseUrl/commerce/wishlist/$itemId/move-to-cart/'),
-      headers: _headers,
+      headers: headers,
       body: jsonEncode({'quantity': quantity}),
-    );
+    ));
     _decode(response);
   }
 
   Future<void> removeWishlistItem(int itemId) async {
-    final request = http.Request('DELETE', Uri.parse('$baseUrl/commerce/wishlist/'))
-      ..headers.addAll(_headers)
-      ..body = jsonEncode({'item_id': itemId});
-    final streamed = await request.send();
-    if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
-      throw Exception('Could not remove wishlist item');
-    }
+    final response = await _authorized((headers) => http.delete(
+      Uri.parse('$baseUrl/commerce/wishlist/'),
+      headers: headers,
+      body: jsonEncode({'item_id': itemId}),
+    ));
+    _decodeAny(response);
   }
 
   Future<List<Map<String, dynamic>>> addresses() async {
-    final response = await http.get(Uri.parse('$baseUrl/commerce/addresses/'), headers: _headers);
+    final response = await _authorized((headers) => http.get(Uri.parse('$baseUrl/commerce/addresses/'), headers: headers));
     return List<Map<String, dynamic>>.from(_decodeAny(response) as List);
   }
 
   Future<Map<String, dynamic>> createAddress(Map<String, dynamic> address) async {
-    final response = await http.post(Uri.parse('$baseUrl/commerce/addresses/'), headers: _headers, body: jsonEncode(address));
+    final response = await _authorized((headers) => http.post(Uri.parse('$baseUrl/commerce/addresses/'), headers: headers, body: jsonEncode(address)));
     return _decode(response);
   }
 
   Future<Map<String, dynamic>> updateAddress(int addressId, Map<String, dynamic> address) async {
-    final response = await http.patch(
+    final response = await _authorized((headers) => http.patch(
       Uri.parse('$baseUrl/commerce/addresses/$addressId/'),
-      headers: _headers,
+      headers: headers,
       body: jsonEncode(address),
-    );
+    ));
     return _decode(response);
   }
 
   Future<void> deleteAddress(int addressId) async {
-    final response = await http.delete(
+    final response = await _authorized((headers) => http.delete(
       Uri.parse('$baseUrl/commerce/addresses/$addressId/'),
-      headers: _headers,
-    );
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      final message = response.body.isEmpty ? 'Could not delete address' : response.body;
-      throw Exception(message);
-    }
+      headers: headers,
+    ));
+    _decodeAny(response);
   }
 
   Future<Map<String, dynamic>> checkout(int addressId) async {
-    final response = await http.post(Uri.parse('$baseUrl/commerce/checkout/'), headers: _headers, body: jsonEncode({'address_id': addressId}));
+    final response = await _authorized((headers) => http.post(Uri.parse('$baseUrl/commerce/checkout/'), headers: headers, body: jsonEncode({'address_id': addressId})));
     return _decode(response);
   }
 
   Future<List<Map<String, dynamic>>> orders() async {
-    final response = await http.get(Uri.parse('$baseUrl/commerce/orders/'), headers: _headers);
+    final response = await _authorized((headers) => http.get(Uri.parse('$baseUrl/commerce/orders/'), headers: headers));
     return List<Map<String, dynamic>>.from(_decodeAny(response) as List);
   }
 
   Future<Map<String, dynamic>> orderDetail(int orderId) async {
-    final response = await http.get(Uri.parse('$baseUrl/commerce/orders/$orderId/'), headers: _headers);
+    final response = await _authorized((headers) => http.get(Uri.parse('$baseUrl/commerce/orders/$orderId/'), headers: headers));
     return _decode(response);
   }
 
   Future<Map<String, dynamic>> createPayment(int orderId) async {
-    final response = await http.post(Uri.parse('$baseUrl/commerce/orders/$orderId/payment/create/'), headers: _headers);
+    final response = await _authorized((headers) => http.post(Uri.parse('$baseUrl/commerce/orders/$orderId/payment/create/'), headers: headers));
     return _decode(response);
   }
 
   Future<Map<String, dynamic>> verifyPayment(int orderId, Map<String, dynamic> payload) async {
-    final response = await http.post(Uri.parse('$baseUrl/commerce/orders/$orderId/payment/verify/'), headers: _headers, body: jsonEncode(payload));
+    final response = await _authorized((headers) => http.post(Uri.parse('$baseUrl/commerce/orders/$orderId/payment/verify/'), headers: headers, body: jsonEncode(payload)));
     return _decode(response);
+  }
+
+
+  Future<http.Response> _authorized(
+    Future<http.Response> Function(Map<String, String> headers) send,
+  ) async {
+    var response = await send(_headers);
+    if (response.statusCode != 401) return response;
+
+    final refreshToken = await _storage.read(key: 'refresh_token');
+    if (refreshToken == null || refreshToken.isEmpty) return response;
+
+    final refreshResponse = await http.post(
+      Uri.parse('$baseUrl/auth/token/refresh/'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'refresh': refreshToken}),
+    );
+    if (refreshResponse.statusCode < 200 || refreshResponse.statusCode >= 300) {
+      await logout();
+      return response;
+    }
+
+    await _saveTokens(_decode(refreshResponse));
+    response = await send(_headers);
+    return response;
   }
 
   Map<String, String> get _headers => {
