@@ -384,7 +384,7 @@ class _CartPageState extends State<CartPage> {
                 child: ListTile(
                   title: Text(product['name'].toString()),
                   subtitle: Text('₹${product['price']} × ${item['quantity']} ${product['unit']}'),
-                  trailing: Wrap(mainAxisSize: MainAxisSize.min, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                  trailing: Wrap(crossAxisAlignment: WrapCrossAlignment.center, children: [
                     IconButton(icon: const Icon(Icons.remove_circle_outline), onPressed: () => _changeQuantity(item['id'] as int, (double.tryParse(item['quantity'].toString()) ?? 1) - 1)),
                     Text(item['quantity'].toString()),
                     IconButton(icon: const Icon(Icons.add_circle_outline), onPressed: () => _changeQuantity(item['id'] as int, (double.tryParse(item['quantity'].toString()) ?? 0) + 1)),
