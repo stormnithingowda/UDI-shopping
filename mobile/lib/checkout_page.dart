@@ -297,10 +297,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 ),
               RadioGroup<int>(
                 groupValue: _selectedAddressId,
-                onChanged: _busy
-                    ? null
-                    : (int? value) =>
-                        setState(() => _selectedAddressId = value),
+                onChanged: (int? value) {
+                  if (_busy) return;
+                  setState(() => _selectedAddressId = value);
+                },
                 child: Column(
                   children: addresses.map((address) {
                     final id = address['id'] as int;
