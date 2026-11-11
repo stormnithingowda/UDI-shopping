@@ -295,45 +295,50 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     child: Text('Add a delivery address to continue.'),
                   ),
                 ),
-              ...addresses.map((address) {
-                final id = address['id'] as int;
-                final selected = _selectedAddressId == id;
-                return Card(
-                  child: Column(
-                    children: [
-                      RadioListTile<int>(
-                        value: id,
-                        groupValue: _selectedAddressId,
-                        onChanged: _busy
-                            ? null
-                            : (value) => setState(() => _selectedAddressId = value),
-                        title: Text(address['full_name'].toString()),
-                        subtitle: Text(
-                          '${address['address_line1']}, ${address['city']}, ${address['state']} - ${address['postal_code']}\n${address['phone']}',
-                        ),
-                      ),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Wrap(
-                          children: [
-                            TextButton.icon(
-                              onPressed: _busy ? null : () => _editAddress(address),
-                              icon: const Icon(Icons.edit_outlined, size: 18),
-                              label: const Text('Edit'),
+              RadioGroup<int>(
+                groupValue: _selectedAddressId,
+                onChanged: _busy
+                    ? null
+                    : (int? value) =>
+                        setState(() => _selectedAddressId = value),
+                child: Column(
+                  children: addresses.map((address) {
+                    final id = address['id'] as int;
+                    final selected = _selectedAddressId == id;
+                    return Card(
+                      child: Column(
+                        children: [
+                          RadioListTile<int>(
+                            value: id,
+                            title: Text(address['full_name'].toString()),
+                            subtitle: Text(
+                              '${address['address_line1']}, ${address['city']}, ${address['state']} - ${address['postal_code']}\\n${address['phone']}',
                             ),
-                            TextButton.icon(
-                              onPressed: _busy ? null : () => _deleteAddress(address),
-                              icon: const Icon(Icons.delete_outline, size: 18),
-                              label: const Text('Delete'),
+                          ),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: Wrap(
+                              children: [
+                                TextButton.icon(
+                                  onPressed: _busy ? null : () => _editAddress(address),
+                                  icon: const Icon(Icons.edit_outlined, size: 18),
+                                  label: const Text('Edit'),
+                                ),
+                                TextButton.icon(
+                                  onPressed: _busy ? null : () => _deleteAddress(address),
+                                  icon: const Icon(Icons.delete_outline, size: 18),
+                                  label: const Text('Delete'),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          ),
+                          if (selected) const Divider(height: 1),
+                        ],
                       ),
-                      if (selected) const Divider(height: 1),
-                    ],
-                  ),
-                );
-              }),
+                    );
+                  }).toList(),
+                ),
+              ),
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 onPressed: _busy ? null : _addAddress,
