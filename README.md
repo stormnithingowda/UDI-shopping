@@ -118,4 +118,6 @@ GitHub Actions runs the Django checks/tests and Flutter analysis/test/debug-APK 
 
 ## Project status
 
-Feature implementation is still under verification. The repository does not yet have a confirmed successful GitHub Actions result or a verified Android build. Do not treat the app as complete or production-ready until the automated checks and end-to-end test-mode payment flow have been verified.
+The current `main` commit (`8a3be2c`) has a successful GitHub Actions run ([run 42978852610](https://github.com/stormnithingowda/UDI-shopping/actions/runs/42978852610)). The Django job passed system checks, PostgreSQL migrations, and the backend test command. The Flutter job passed `flutter analyze`, `flutter test`, and `flutter build apk --debug`.
+
+The app remains under verification: a real Razorpay Test Mode transaction completed through the Flutter app, followed by delivery and processing of a signed webhook by the backend, has not yet been verified. The automated payment tests use mocked gateway responses. The deployment section above is a deployment checklist, not evidence of a hosted deployment or production readiness. Do not treat the app as complete until the end-to-end test-mode payment/webhook flow is verified.
